@@ -27,7 +27,7 @@
 	</head>
 	<body>
 		<div class="container">
-		<h1>CS184/284A Spring 2025 Homework 1 Write-Up</h1>
+		<h1>CS184 summer 2025 Homework 1 Write-Up</h1>
 		<div style="text-align: center;">Names: Yuanchen Li</div>
 
 		<br>
@@ -38,87 +38,333 @@
 
 		Link to GitHub repository: <a href="https://github.com/cal-cs184/hw-webpages-su25-Luke-liyy">https://github.com/cal-cs184/hw-webpages-su25-Luke-liyy</a>
 
-		<figure>
-			<img src="lion.jpg" alt="Lion" style="width:50%"/>
-			<figcaption>You can add images with captions!</figcaption>
-		</figure>
-
 		<!--
 		We've already added one heading per task, to make your write-up as navigable when grading. Please fit your write-up within these sections!
 		-->
 
-		<h2>PDF版本</h2>
-		<p>如果你想查看PDF版本的报告，可以点击下面的链接下载，或者直接在浏览器中查看：</p>
+		<h2>PDF</h2>
+		<p>If you want to see the PDF version of the report, you can download it by clicking on the link below, or just view it in your browser:</p>
 		<div style="text-align: center; margin: 20px 0;">
-			<a href="Hw1.pdf" target="_blank" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">📄 查看/下载PDF报告</a>
+			<a href="homework1-YuanchenLi.pdf" target="_blank" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">📄 View/Download PDF Report</a>
 		</div>
 		
 		<!-- PDF嵌入显示 -->
 		<div style="text-align: center; margin: 20px 0;">
-			<embed src="Hw1.pdf" type="application/pdf" width="100%" height="600px" style="border: 1px solid #ccc;">
-			<p><i>如果PDF无法正常显示，请点击上方链接下载查看。</i></p>
+			<embed src="homework1-YuanchenLi.pdf" type="application/pdf" width="100%" height="600px" style="border: 1px solid #ccc;">
+			<p><i>If the PDF does not display properly, please click the link above to download and view it.</i></p>
 		</div>
 
 		<h2>Overview</h2>
-		Give a high-level overview of what you implemented in this homework. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the homework.
+		<p>In this homework, I implemented a complete rasterization rendering pipeline, including triangle rasterization, antialiasing via supersampling, geometric transforms, barycentric coordinate interpolation, and texture mapping. Through this project, I gained a deep understanding of the fundamental principles of rasterization in computer graphics, learned how to handle aliasing artifacts, and implemented efficient texture mapping and filtering techniques. The most interesting discovery was how supersampling approximates true pixel coverage by increasing sample points to achieve smooth antialiasing effects.</p>
 
 		<h2>Task 1: Drawing Single-Color Triangles</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		
+		<h3>1.1 How to rasterize triangles in your own words</h3>
+		
+		<h4>1.1.1 Compute the axis-aligned bounding box (AABB)</h4>
+		<p>I take min/max of the three vertices in screen space, then shift by -0.5 px so that pixel indices represent pixel centers. Finally, I clamp the range to the framebuffer.</p>
+		
+		<h4>1.1.2 Edge-Function Pre-computation</h4>
+		<p>Each directed edge e<sub>i</sub> = (v<sub>i</sub>, v<sub>j</sub>) is represented by a linear function:</p>
+		<p><code>e(x,y) = ax + by + c</code></p>
+		<p>with <br><code>a = y<sub>i</sub> - y<sub>j</sub></code>, <code>b = x<sub>j</sub> - x<sub>i</sub></code>, <code>c = x<sub>i</sub>*y<sub>j</sub> - x<sub>j</sub>*y<sub>i</sub></code>.</p>
+		
+		<h4>1.1.3 Consistent Orientation</h4>
+		<p>The signed doubled area:</p>
+		<p><code>A<sub>2</sub>= (x<sub>1</sub> - x<sub>0</sub>)(y<sub>2</sub> - y<sub>0</sub>) - (y<sub>1</sub> - y<sub>0</sub>)(x<sub>2</sub> - x<sub>0</sub>)</code></p>
+		
+		<h4>1.1.4 Scanning the Bounding Box</h4>
+		<p>The code iterates row by row through every pixel whose centre lies inside the bounding box. For each (p<sub>x</sub>, p<sub>y</sub>), the centre coordinates are (x<sub>s</sub>, y<sub>s</sub>) = (p<sub>x</sub> + 0.5, p<sub>y</sub> + 0.5). Computing e<sub>0</sub>, e<sub>1</sub>, e<sub>2</sub> requires three multiply-add operations per edge, for a total of nine FLOPs, followed by three comparisons. If the point passes the edge test, fill_pixel writes the colour to every subsample of that pixel.</p>
+		
+		<h3>1.2 Why the Algorithm Is No Worse than a Full AABB Scan</h3>
+		<ul>
+			<li>I iterate over exactly the pixels inside the AABB, which is the same set examined by a naïve "sample-every-point-in-bbox" approach.</li>
+			<li>Each pixel entails only three multiply-adds and three comparisons. No costly operations (div, sqrt) are used.</li>
+			<li>Therefore the complexity is O(bbox pixels) in time and O(1) in extra memory.</li>
+		</ul>
+		
+		<h3>1.3 Screenshot of basic/test4.svg with pixel inspector</h3>
+		<div style="text-align: center; margin: 20px 0;">
+			<img src="images/task1-2.png" alt="Task 1 - test4.svg screenshot" style="max-width: 80%;"/>
+			<p><em>Screenshot of basic/test4.svg with pixel inspector showing triangle rasterization</em></p>
+		</div>
+		
+		<h3>About Extra Credit</h3>
+		<p>I tried to complete the extra credit for task 1, but ultimately was not able to finish it. To measure the time taken, I added the following code at line 307 in src/drawrend.cpp. However, I found that the time required to render the same image was unstable with each run. Can this kind of timing be used for comparison?</p>
+		<pre><code>auto t0 = std::chrono::high_resolution_clock::now();
+svg.draw(software_rasterizer, ndc_to_screen * svg_to_ndc[current_svg]);
+auto t1 = std::chrono::high_resolution_clock::now();
+double ms = std::chrono::duration&lt;double, std::milli&gt;(t1 - t0).count();
+std::cout &lt;&lt; ms &lt;&lt; " ms\n";</code></pre>
 
-		<p>Here is an example 2x2 gridlike structure using an HTML table. Each <b>tr</b> is a row and each <b>td</b> is a column in that row. You might find this useful for framing and showing your result images in an organized fashion.</p>
+		<h2>Task 2: Antialiasing by Supersampling</h2>
+		
+		<h3>2.1 Supersampling algorithm & data structures</h3>
+		
+		<h4>2.1.1 sample_rate</h4>
+		<p>This integer controls how many sub-samples live inside each pixel—1, 4, 9, 16, and so on. You can change it at run time via set_sample_rate(), letting you trade rendering speed for image quality. Every buffer size allocation and every loop that iterates over sub-samples is driven by this value.</p>
+		
+		<h4>2.1.2 sample_buffer</h4>
+		<p>sample_buffer is the central data structure that stores the intermediate colors of all sub-samples. It is a vector&lt;Color&gt; whose length equals width × height × sample_rate, reserving sample_rate color slots for every pixel on the screen. The index scheme is simple: locate the pixel first, then offset by the sub-sample index—pixel_id * sample_rate + sub_id. During rasterization, we write directly into this buffer; we do not touch the 8-bit RGB framebuffer until the very end.</p>
+		
+		<h4>2.1.3 Pipeline for a triangle</h4>
+		<ol type="a" style="margin-left: 1em;">
+			<li><strong>Bounding box clipping.</strong></li>
+			<li><strong>Per-sub-sample test.</strong>
+				<ol style="list-style-type: decimal;">
+					<li>Iterate over all sub-samples inside each pixel.</li>
+					<li>Evaluate edge functions at the floating-point positions.</li>
+					<li>If inside, write the color directly to <code>sample_buffer</code>.</li>
+				</ol>
+			</li>
+			<li><strong>Resolve.</strong> Average the <em>n</em> samples back to the 8-bit RGB framebuffer in <code>resolve_to_framebuffer()</code>.</li>
+		</ol>
+		
+		<h3>2.2 Why supersampling is useful</h3>
+		<ul>
+			<li><strong>Aliasing:</strong> Single-point sampling cannot estimate partial coverage → "jaggies".</li>
+			<li><strong>Coverage approximation:</strong> With ≥4 samples, we can approximate the true area coverage by k/n.</li>
+			<li><strong>Renderer-agnostic:</strong> Pure geometry approach, independent of texture filters.</li>
+		</ul>
+		
+		<h3>2.3 Modifications to the rasterization pipeline</h3>
+		<table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
+			<tr style="background-color: #f2f2f2;">
+				<th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Location</th>
+				<th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Change</th>
+			</tr>
+			<tr>
+				<td style="border: 1px solid #ddd; padding: 12px;">fill_pixel</td>
+				<td style="border: 1px solid #ddd; padding: 12px;">For points/lines, write the same color for every sub-sample.</td>
+			</tr>
+			<tr>
+				<td style="border: 1px solid #ddd; padding: 12px;">rasterize_triangle</td>
+				<td style="border: 1px solid #ddd; padding: 12px;">Added nested loops over sub-samples; kept fast path when n==1.</td>
+			</tr>
+			<tr>
+				<td style="border: 1px solid #ddd; padding: 12px;">set_sample_rate & set_framebuffer_target</td>
+				<td style="border: 1px solid #ddd; padding: 12px;">Re-allocate sample_buffer.</td>
+			</tr>
+			<tr>
+				<td style="border: 1px solid #ddd; padding: 12px;">resolve_to_framebuffer</td>
+				<td style="border: 1px solid #ddd; padding: 12px;">Average n sub-samples and write back to the RGB framebuffer.</td>
+			</tr>
+		</table>
+		
+		<h3>2.4 Using supersampling to antialias triangles</h3>
+		<p>For each pixel we count hit samples k.</p>
+		<ul>
+			<li>Completely inside: k=n.</li>
+			<li>Completely outside: k=0.</li>
+			<li>Edge pixels: 0&lt;k&lt;n. Final color = triangle_color × k/n + background × (n-k)/n.</li>
+		</ul>
+		<p>When n increases 1 → 4 → 16, the coverage levels become finer (25%, 50%, 75%, …) and the staircase edge progressively turns into a smooth gradient.</p>
+		
+		<h3>2.5 Results & explanation</h3>
+		<p>The pixel inspector is placed over the skinny tip of the blue triangle:</p>
+		<ul>
+			<li><strong>1×</strong> Only two colors (blue/white) → harsh jaggies.</li>
+			<li><strong>4×</strong> Mixed shades appear; 25/50/75% coverage soften the edge.</li>
+			<li><strong>16×</strong> Even finer coverage steps; edge looks virtually smooth at normal viewing distance. Frame-rate drops because the inner loops run 16× more often.</li>
+		</ul>
+		
 		<div style="display: flex; flex-direction: column; align-items: center;">
 			<table style="width: 100%; text-align: center; border-collapse: collapse;">
 			  <tr>
 				<td style="text-align: center;">
-				  <img src="lion.jpg" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
+				  <img src="images/task2-1-1.png" alt="1X supersampling" style="max-width: 400px;"/>
+				  <figcaption>1X</figcaption>
 				</td>
 				<td style="text-align: center;">
-				  <img src="lion.jpg" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
+				  <img src="images/task2-1-4.png" alt="4X supersampling" style="max-width: 400px;"/>
+				  <figcaption>4X</figcaption>
 				</td>
 			  </tr>
 			  <tr>
-				<td style="text-align: center;">
-				  <img src="lion.jpg" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-				<td style="text-align: center;">
-				  <img src="lion.jpg" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
+				<td style="text-align: center; padding-top: 20px;" colspan="2">
+				  <img src="images/task2-1-16.png" alt="16X supersampling" style="max-width: 400px;"/>
+				  <figcaption>16X</figcaption>
 				</td>
 			  </tr>
 			</table>
 		</div>
 		
-		<h2>Task 2: Antialiasing by Supersampling</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		<h3>Additional Notes</h3>
+		<p>I completed the entire assignment under WSL. When I open the file with the default viewing parameters using <code>./draw ../svg/basic/test4.svg</code> I see a single blue pixel spilling outside the black frame. However, after I zoom in or out with the mouse wheel, all blue pixels are confined strictly within the frame.</p>
+
+		<!-- Image placeholder inserted per user request -->
+		<div style="text-align: center; margin: 20px 0;">
+			<img src="images/task2-1.png" alt="Additional Notes Illustration" style="max-width: 60%;"/>
+		</div>
 
 		<h2>Task 3: Transforms</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		
+		<h3>3.1 Modified Robot</h3>
+		<p>This picture looks like a robot dancing, though it could also be seen as throwing a softball.</p>
+		
+		<div style="text-align: center; margin: 20px 0;">
+			<img src="images/task3-my robot dance.png" alt="Modified robot performing dance/softball throw" style="max-width: 60%;"/>
+			<p><em>Modified robot performing a dance or throwing a softball</em></p>
+		</div>
+		
+		<h3>For Extra Credit</h3>
+		<p>I implemented viewport rotation functionality using keyboard controls:</p>
+		
+		<h4>Store the Rotation Angle</h4>
+		<p>Add a float view_rotation field to the DrawRend class to store the current viewport rotation angle (in degrees). Initialize it to 0 in the constructor, init(), and view_init().</p>
+		
+		<h4>Listen for Keyboard Events</h4>
+		<p>In the switch statement inside keyboard_event, add:</p>
+		<pre><code>case 'E': view_rotation -= 5.f; redraw(); break;  // clockwise
+case 'Q': view_rotation += 5.f; redraw(); break;  // counterclockwise</code></pre>
+		<p>Each key press updates the rotation angle and triggers a redraw.</p>
+		
+		<h4>Construct the Rotation Matrix</h4>
+		<p>At the beginning of redraw(), create:</p>
+		<pre><code>Matrix3x3 R = translate(0.5, 0.5) *
+              rotate(view_rotation) *
+              translate(-0.5, -0.5);</code></pre>
+		<p>This applies a rotation around the center of the NDC (Normalized Device Coordinates) space, which is at (0.5, 0.5).</p>
+		
+		<h4>Insert Into the Matrix Stack</h4>
+		<p>Replace the original drawing transformation, ndc_to_screen * svg_to_ndc with:</p>
+		<pre><code>Matrix3x3 total = ndc_to_screen * R * svg_to_ndc[current_svg];</code></pre>
+		<p>Apply this total matrix to all vertices (both the SVG content and the border lines), so the entire canvas rotates as the angle changes.</p>
+		
+		<h4>Reset on View Initialization</h4>
+		<p>In view_init(), reset view_rotation to 0 to ensure that pressing the space bar not only resets the view but also clears any rotation.</p>
+
+		<!-- Image placeholder for Reset on View Initialization section -->
+		<div style="text-align: center; margin: 20px 0;">
+			<img src="images/task3-rotate.png" alt="Reset on View Initialization Illustration" style="max-width: 60%;"/>
+			<p><em>rotated robot</em></p>
+		</div>
 
 		<h2>Task 4: Barycentric coordinates</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		
+		<h3>4.1 Explanation of Barycentric Coordinates</h3>
+		<p>Inside a triangle, any point can be thought of as a blend of the three vertices in certain "proportions"; these three proportions are the point's barycentric coordinates, denoted (w₀, w₁, w₂).</p>
+		
+		<p>Barycentric coordinates provide a natural way to interpolate vertex attributes (such as colors, texture coordinates, or normals) across the surface of a triangle. Each coordinate represents the "weight" or influence of the corresponding vertex on the current point.</p>
+		<p>As shown in the figure above, you can view it by running: <code>./draw ../docs/task4.svg</code></p>
+		<div style="text-align: center; margin: 20px 0;">
+			<img src="images/task4-triangle.png" alt="Triangle with barycentric coordinate demonstration" style="max-width: 60%;"/>
+			<p><em>Triangle demonstrating barycentric coordinate color interpolation</em></p>
+			
+		</div>
+		
+		<h3>4.2 Screenshot of svg/basic/test7.svg</h3>
+		<div style="text-align: center; margin: 20px 0;">
+			<img src="images/task4.png" alt="Color wheel from test7.svg" style="max-width: 60%;"/>
+			<p><em>Screenshot of svg/basic/test7.svg showing smooth color interpolation</em></p>
+		</div>
 
 		<h2>Task 5: "Pixel sampling" for texture mapping</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		
+		<h3>5.1 What is Pixel Sampling?</h3>
+		<p>During texture mapping, we need to determine the color of each pixel on the screen based on a continuous texture coordinate (u, v). Since the texture is stored as a discrete grid of texels, we must "sample" from this grid—this process is called pixel sampling. The choice of sampling method directly affects image quality, influencing sharpness, smoothness, and the presence of artifacts such as jaggies or moiré patterns.</p>
+		
+		<h3>5.2 Implementation Overview</h3>
+		<ul>
+			<li>In rasterize_textured_triangle, barycentric weights are computed and used to interpolate vertex UVs for every subsample, resulting in the target texture coordinate (u,v).</li>
+			<li>A SampleParams structure is filled and passed to the Texture at mip level 0.</li>
+			<li>The Texture::sample function dispatches to either sample_nearest or sample_bilinear based on the psm parameter:</li>
+			<ul>
+				<li><strong>Nearest:</strong> Converts (u,v) to texel space, rounds to the nearest integer (t<sub>x</sub>,t<sub>y</sub>), and fetches the single texel using get_texel.</li>
+				<li><strong>Bilinear:</strong> Fetches the four neighboring texels surrounding (x,y), computes the horizontal (s<sub>x</sub>) and vertical (s<sub>y</sub>) interpolation weights, and performs two linear interpolations to blend the colors.</li>
+			</ul>
+		</ul>
+		
+		<h3>5.3 Comparison Screenshots</h3>
+		<div style="display: flex; flex-direction: column; align-items: center;">
+			<table style="width: 100%; text-align: center; border-collapse: collapse;">
+			  <tr>
+				<td style="text-align: center;">
+				  <img src="images/task5-b-1.png" alt="Bilinear sampling at 1 sample" style="max-width: 400px;"/>
+				  <figcaption>Bilinear sampling at 1 sample</figcaption>
+				</td>
+				<td style="text-align: center;">
+				  <img src="images/task5-b-16.png" alt="Bilinear sampling at 16 samples" style="max-width: 400px;"/>
+				  <figcaption>Bilinear sampling at 16 samples</figcaption>
+				</td>
+			  </tr>
+			  <tr>
+				<td style="text-align: center; padding-top: 20px;">
+				  <img src="images/task5-n-1.png" alt="Nearest sampling at 1 sample" style="max-width: 400px;"/>
+				  <figcaption>Nearest sampling at 1 sample</figcaption>
+				</td>
+				<td style="text-align: center; padding-top: 20px;">
+				  <img src="images/task5-n-16.png" alt="Nearest sampling at 16 samples" style="max-width: 400px;"/>
+				  <figcaption>Nearest sampling at 16 samples</figcaption>
+				</td>
+			  </tr>
+			</table>
+		</div>
+		
+		<h3>5.4 Discuss the difference</h3>
+		<p>A large difference emerges when a screen pixel spans fractions of a texel—such as during strong magnification of high-frequency textures or thin diagonal edges—because nearest-neighbor snaps to one texel while bilinear interpolates among four. The resulting texel-to-texel discontinuities produce jagged aliasing and moiré in nearest sampling, whereas bilinear's low-pass blend smooths those high-frequency transitions.</p>
 
 		<h2>Task 6: "Level Sampling" with mipmaps for texture mapping</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		
+		<h3>6.1 What "level sampling" means</h3>
+		<p>When the same texture is projected onto screen-space, one screen pixel can cover anything from less than one texel (magnification) to hundreds of texels (strong minification, e.g. a checkerboard far in the distance).</p>
+		
+		<p>Level sampling decides which pre-filtered "mipmap" level of the texture we should read so that the texel density roughly matches the pixel footprint.</p>
+		
+		<h3>6.2 Comparison Table</h3>
+		<table style="border-collapse: collapse; width: 100%; margin: 20px 0;">
+			<tr style="background-color: #f2f2f2;">
+				<th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Technique you turn up</th>
+				<th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Speed (per shaded pixel)</th>
+				<th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Extra memory</th>
+				<th style="border: 1px solid #ddd; padding: 12px; text-align: left;">Antialiasing ability</th>
+			</tr>
+			<tr>
+				<td style="border: 1px solid #ddd; padding: 12px;">Pixel sampling</td>
+				<td style="border: 1px solid #ddd; padding: 12px;">Nearest = 1 texel fetch<br>Bilinear = 4 fetches</td>
+				<td style="border: 1px solid #ddd; padding: 12px;">none</td>
+				<td style="border: 1px solid #ddd; padding: 12px;">Removes blockiness while magnifying, but cannot fight minification aliasing</td>
+			</tr>
+			<tr>
+				<td style="border: 1px solid #ddd; padding: 12px;">Level sampling</td>
+				<td style="border: 1px solid #ddd; padding: 12px;">L_NEAREST ≈ 1× pixel cost of chosen psm<br>L_LINEAR ≈ 2× pixel cost of psm</td>
+				<td style="border: 1px solid #ddd; padding: 12px;">All mip levels ≈ 33% extra texture RAM</td>
+				<td style="border: 1px solid #ddd; padding: 12px;">Eliminates high-frequency flicker when the texture shrinks; tri-linear further hides discontinuities between levels</td>
+			</tr>
+			<tr>
+				<td style="border: 1px solid #ddd; padding: 12px;">Samples-per-pixel</td>
+				<td style="border: 1px solid #ddd; padding: 12px;">× sample_rate</td>
+				<td style="border: 1px solid #ddd; padding: 12px;">A larger multi-sampling cache</td>
+				<td style="border: 1px solid #ddd; padding: 12px;">Kills jagged edges on geometry and picks up true pixel coverage; also improves isotropic texture aliasing, but less efficient for heavy minification</td>
+			</tr>
+		</table>
+		
+		<h3>6.3 Screenshot Comparisons</h3>
+		<div style="display: flex; flex-direction: column; align-items: center;">
+			<table style="width: 100%; text-align: center; border-collapse: collapse;">
+			  <tr>
+				<td style="text-align: center;">
+				  <img src="images/L_NEAREST and P_LINEAR.png" alt="L_NEAREST and P_LINEAR" style="max-width: 400px;"/>
+				  <figcaption>L_NEAREST and P_LINEAR</figcaption>
+				</td>
+				<td style="text-align: center;">
+				  <img src="images/L_ZERO and P_LINEAR.png" alt="L_ZERO and P_LINEAR" style="max-width: 400px;"/>
+				  <figcaption>L_ZERO and P_LINEAR</figcaption>
+				</td>
+			  </tr>
+			  <tr>
+				<td style="text-align: center; padding-top: 20px;">
+				  <img src="images/L_ZERO and P_NEAREST.png" alt="L_ZERO and P_NEAREST" style="max-width: 400px;"/>
+				  <figcaption>L_ZERO and P_NEAREST</figcaption>
+				</td>
+				<td style="text-align: center; padding-top: 20px;">
+				  <img src="images/L_NEAREST and P_NEAREST.png" alt="L_NEAREST and P_NEAREST" style="max-width: 400px;"/>
+				  <figcaption>L_NEAREST and P_NEAREST</figcaption>
+				</td>
+			  </tr>
+			</table>
+		</div>
 
-		<h2>(Optional) Task 7: Extra Credit - Draw Something Creative!</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-		<h2>Additional Notes (please remove)</h2>
-		<ul>
-			<li>You can also add code if you'd like as so: <code>code code code</code></li>
-			<li>If you'd like to add math equations, 
-				<ul>
-					<li>You can write inline equations like so: \( a^2 + b^2 = c^2 \)</li>
-					<li>You can write display equations like so: \[ a^2 + b^2 = c^2 \]</li>
-				</ul>
-			</li>
-		</ul>
 		</div>
 	</body>
 </html>
