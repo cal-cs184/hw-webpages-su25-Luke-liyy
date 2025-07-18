@@ -32,85 +32,208 @@
 
 		<br>
 
-		Link to webpage: (TODO) <a href="https://cs184.eecs.berkeley.edu/sp25">cs184.eecs.berkeley.edu/sp25</a>
+		Link to webpage: (TODO) <a href="https://cal-cs184.github.io/hw-webpages-su25-Luke-liyy/hw2/">https://cal-cs184.github.io/hw-webpages-su25-Luke-liyy/hw2/</a>
 
 		<br>
 		
-		Link to GitHub repository: (TODO) <a href="https://cs184.eecs.berkeley.edu/sp25">cs184.eecs.berkeley.edu/sp25</a>
+		Link to GitHub repository: (TODO) <a href="https://cal-cs184.github.io/hw-webpages-su25-Luke-liyy/">chttps://cal-cs184.github.io/hw-webpages-su25-Luke-liyy/</a>
 
-		<figure>
-			<img src="teapot.png" alt="Teapot" style="width:50%"/>
-			<figcaption>You can add images with captions!</figcaption>
-		</figure>
+
 
 		<!--
 		We've already added one heading per part, to make your write-up as navigable when grading. Please fit your write-up within these sections!
 		-->
 
 		<h2>Overview</h2>
-		Give a high-level overview of what you implemented in this homework. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the homework.
-
+		<p>This assignment walks through several cornerstone algorithms in computer graphics for handling curves, surfaces, and triangle meshes. I implemented six major components:</p>
+		<ul>
+			<li><b>Bézier curves and surfaces</b>: Implemented 1-D de&nbsp;Casteljau evaluation for Bézier curves and extended it to two dimensions to evaluate any point on a bicubic Bézier patch.</li>
+			<li><b>Half-edge data structure</b>: Built a full half-edge mesh representation and utilities for navigating and modifying connectivity.</li>
+			<li><b>Area-weighted vertex normals</b>: Produced smooth per-vertex normals by summing adjacent face normals weighted by triangle area.</li>
+			<li><b>Local topology edits</b>: Added reversible edge flip and edge split operations that keep all half-edge pointers consistent.</li>
+			<li><b>Loop subdivision</b>: Completed the four-pass Loop subdivision pipeline to upsample arbitrary manifold meshes and analysed failure cases on the Utah teapot.</li>
+		</ul>
+		
 		<h2>Section I: Bezier Curves and Surfaces</h2>
 
 		<h3>Part 1: Bezier curves with 1D de Casteljau subdivision</h3>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		<p>de Casteljau evaluates a Bézier curve at a parameter \( t \in [0,1] \) by repeated linear interpolation of its control points.</p>
+		<p>For a control-point list \( \{P_0,\dots,P_n\} \), define \( P_i^{(1)}=(1-t)P_i^{(0)}+t P_{i+1}^{(0)} \) for \( i=0\ldots n-1 \). Repeat on that list until a single point \( P_0^{(n)} \) remains; this point \( B(t) \) lies on the curve.</p>
 
-		<p>Here is an example 2x2 gridlike structure using an HTML table. Each <b>tr</b> is a row and each <b>td</b> is a column in that row. You might find this useful for framing and showing your result images in an organized fashion.</p>
-		<div style="display: flex; flex-direction: column; align-items: center;">
-			<table style="width: 100%; text-align: center; border-collapse: collapse;">
-			  <tr>
-				<td style="text-align: center;">
-				  <img src="teapot.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-				<td style="text-align: center;">
-				  <img src="teapot.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-			  </tr>
-			  <tr>
-				<td style="text-align: center;">
-				  <img src="teapot.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-				<td style="text-align: center;">
-				  <img src="teapot.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
-				</td>
-			  </tr>
-			</table>
-		</div>
+		<div class="image-grid" style="display:flex; flex-wrap:wrap; justify-content:center; gap:16px;">
+	<figure style="margin:0; text-align:center;">
+		<img src="pic/1.1/1.png" alt="1" style="width:300px"/>
+		<figcaption>1</figcaption>
+	</figure>
+	<figure style="margin:0; text-align:center;">
+		<img src="pic/1.1/2.png" alt="2" style="width:300px"/>
+		<figcaption>2</figcaption>
+	</figure>
+	<figure style="margin:0; text-align:center;">
+		<img src="pic/1.1/3.png" alt="3" style="width:300px"/>
+		<figcaption>3</figcaption>
+	</figure>
+	<figure style="margin:0; text-align:center;">
+		<img src="pic/1.1/4.png" alt="4" style="width:300px"/>
+		<figcaption>4</figcaption>
+	</figure>
+	<figure style="margin:0; text-align:center;">
+		<img src="pic/1.1/5.png" alt="5" style="width:300px"/>
+		<figcaption>5</figcaption>
+	</figure>
+	<figure style="margin:0; text-align:center;">
+		<img src="pic/1.1/control-point.png" alt="control-point" style="width:300px"/>
+		<figcaption>control-point</figcaption>
+	</figure>
+	<figure style="margin:0; text-align:center;">
+		<img src="pic/1.1/mocp.png" alt="mocp" style="width:300px"/>
+		<figcaption>mocp</figcaption>
+	</figure>
+</div>
 
 		<h3>Part 2: Bezier surfaces with separable 1D de Casteljau</h3>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		<p><b>Algorithm Overview</b></p>
+		<ol>
+			<li>For a bicubic Bézier surface patch you have a 4 × 4 grid of control points \( P_{ij},\, i,j \in \{0,\dots,3\} \).</li>
+			<li>Fix \( v \) and, for each of the four rows \( (P_{0j},P_{1j},P_{2j},P_{3j}) \), apply the 1-D de Casteljau procedure with parameter \( u \) to collapse the row to a single point \( Q_j(u) \).</li>
+			<li>These four intermediate points form a Bézier curve in the \( v \)-direction. Treat them as control points and run the 1-D algorithm again, now with parameter \( v \), to obtain the final surface position \( S(u,v) \).</li>
+		</ol>
+		<p><b>Code Implementation</b></p>
+		<ul>
+			<li><code>evaluateStep</code>: Performs a single linear-interpolation layer on a 1-D list of points.</li>
+			<li><code>evaluate1D</code>: Repeatedly calls <code>evaluateStep</code> until the control polygon is collapsed to a single point.</li>
+			<li><code>evaluate</code>: Combines both dimensions to compute the final surface point.</li>
+		</ul>
+		<figure>
+			<img src="pic/teapot-bez.png" alt="teapot" style="width:50%"/>
+			<figcaption>teapot</figcaption>
+		</figure>
 
 		<h2>Section II: Triangle Meshes and Half-Edge Data Structure</h2>
 
 		<h3>Part 3: Area-weighted vertex normals</h3>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		<p>How the area-weighted vertex normal is computed:</p>
+		<ol>
+			<li>Loop around the one-ring of faces starting from an outgoing half-edge <code>hStart = halfedge()</code>. Repeatedly follow <code>h = h-&gt;twin()-&gt;next()</code> to move counter-clockwise until returning to <code>hStart</code>. This visits every face that contains the vertex.</li>
+			<li>For each face, let <code>p0 = h-&gt;vertex-&gt;position</code>, <code>p1 = h-&gt;next-&gt;vertex-&gt;position</code>, <code>p2 = h-&gt;next-&gt;next-&gt;vertex-&gt;position</code>. Compute <code>faceNormal = cross(p1 - p0, p2 - p0)</code>. Since its length equals twice the face area, summing these vectors automatically performs area weighting: <code>nSum += faceNormal</code>.</li>
+			<li>After the loop, if <code>nSum</code> is non-zero, return <code>nSum.unit()</code>; otherwise return the zero vector unchanged.</li>
+		</ol>
+		<div class="image-grid" style="display:flex; flex-wrap:wrap; justify-content:center; gap:16px;">
+	<figure style="margin:0; text-align:center;">
+		<img src="pic/with vertex normals.png" alt="with vertex normals" style="width:300px"/>
+		<figcaption>with vertex normals</figcaption>
+	</figure>
+	<figure style="margin:0; text-align:center;">
+		<img src="pic/without vertex normals.png" alt="without vertex normals" style="width:300px"/>
+		<figcaption>without vertex normals</figcaption>
+	</figure>
+</div>
 
 		<h3>Part 4: Edge flip</h3>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-		<h3>Part 5: Edge split</h3>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-		<h3>Part 6: Loop subdivision for mesh upsampling</h3>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-		<h2>(Optional) Section III: Potential Extra Credit - Art Competition: Model something Creative</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-		<h2>Additional Notes (please remove)</h2>
-		<ul>
-			<li>You can also add code if you'd like as so: <code>code code code</code></li>
-			<li>If you'd like to add math equations, 
+		<p>Edge-flip procedure:</p>
+		<ol>
+			<li><b>Boundary guard</b> – Exit immediately if the target edge is on the boundary, because it has only one incident triangle.</li>
+			<li><b>Cache handles</b> – Collect the six half-edges of the two incident faces (<code>h0…h5</code>), their four vertices (<code>v0…v3</code>), the two faces (<code>f0, f1</code>), and the edge itself (<code>e0</code>).</li>
+			<li><b>Redirect the diagonal</b> – Change the start vertices of the two half-edges that form the diagonal. After this single step the geometric diagonal is already (<code>v2,v3</code>).</li>
+			<li><b>Re-wire topology</b> – With six <code>setNeighbors</code> calls assign <code>next</code>, <code>twin</code>, <code>face</code>, <code>edge</code>, and <code>vertex</code> for each half-edge so that
 				<ul>
-					<li>You can write inline equations like so: \( a^2 + b^2 = c^2 \)</li>
-					<li>You can write display equations like so: \[ a^2 + b^2 = c^2 \]</li>
+					<li>new face <code>f0′</code> has ring <code>v2 → v3 → v1</code> (<code>h0, h5, h2</code>)</li>
+					<li>new face <code>f1′</code> has ring <code>v3 → v2 → v0</code> (<code>h1, h3, h4</code>)</li>
 				</ul>
 			</li>
-		</ul>
+			<li><b>Update anchors</b> – Pick one interior half-edge per element as its handle and return the original edge handle (<code>e0</code>); its identity is unchanged even though it now spans the new vertices (<code>v2,v3</code>).</li>
+		</ol>
+		<div class="image-grid" style="display:flex; flex-wrap:wrap; justify-content:center; gap:16px;">
+	<figure style="margin:0; text-align:center;">
+		<img src="pic/part4/before flip.png" alt="before flip" style="width:300px"/>
+		<figcaption>before flip</figcaption>
+	</figure>
+	<figure style="margin:0; text-align:center;">
+		<img src="pic/part4/after flip.png" alt="after flip" style="width:300px"/>
+		<figcaption>after flip</figcaption>
+	</figure>
+</div>
+
+		<h3>Part 5: Edge split</h3>
+		<p>Edge-split implementation in a nutshell:</p>
+		<ol>
+			<li><b>Collect the old neighborhood</b> – First cache the six half-edges that form the two incident triangles of the target edge <code>e0</code> (<code>h0–h5</code>), their four corner vertices <code>v0–v3</code>, and the two faces <code>f0, f1</code>.</li>
+			<li><b>Insert the midpoint vertex and three brand-new edges</b> – Allocate a new vertex <code>vm</code> at the average of the endpoints ((<code>v0+v1</code>)/2). Create three fresh edges (<code>eA, eB, eC</code>) with their twin half-edges (<code>h6–h11</code>) and set the <code>isNew</code> flag for later Loop subdivision passes.</li>
+			<li><b>Re-wire half-edge connectivity</b>
+				<ul>
+					<li><i>Twins & edges</i>: pair all new half-edges as twins and hook them to their edge objects.</li>
+					<li><i>Next rings</i>: rebuild the <code>next</code> cycles so that each of the four resulting triangles has a consistent CCW loop.</li>
+					<li><i>Vertices & faces</i>: redirect the <code>vertex()</code> and <code>face()</code> pointers, ensuring every element stores one of its half-edges.</li>
+				</ul>
+			</li>
+			<li><b>Update top-level handles</b> – Point each original vertex’s <code>halfedge()</code> to an outgoing half-edge that still references it, and set <code>vm-&gt;halfedge()</code> to the half-edge that runs along the old edge direction (required by the spec).</li>
+			<li><b>Return the new vertex</b> – The function finally returns <code>vm</code>, giving callers a convenient handle to the midpoint.</li>
+		</ol>
+		<div class="image-grid" style="display:flex; flex-wrap:wrap; justify-content:center; gap:16px;">
+	<figure style="margin:0; text-align:center;">
+		<img src="pic/part5/5-split.png" alt="5-split" style="width:300px"/>
+		<figcaption>5-split</figcaption>
+	</figure>
+	<figure style="margin:0; text-align:center;">
+		<img src="pic/part5/5.png" alt="5" style="width:300px"/>
+		<figcaption>5</figcaption>
+	</figure>
+	<figure style="margin:0; text-align:center;">
+		<img src="pic/part5/5-split-flip.png" alt="5-split-flip" style="width:300px"/>
+		<figcaption>5-split-flip</figcaption>
+	</figure>
+</div>
+
+		<h3>Part 6: Loop subdivision for mesh upsampling（not finished）</h3>
+		<p><b>Loop-Subdivision Implementation (brief overview)</b></p>
+		<ol>
+			<li><b>Pass 1 – pre-compute new positions without touching the mesh topology</b>
+				<ul>
+					<li>For every old vertex, store <code>newPosition</code> using the standard Loop masks:
+						<ul>
+							<li><i>interior vertex</i> → weighted average of itself and all one-ring neighbours ( \( u = \frac{3}{16} \) for valence 3, \( u = \frac{3}{8n} \) otherwise);</li>
+							<li><i>boundary vertex</i> → \( \frac{3}{4}v + \frac{1}{8}(n_0 + n_1) \).</li>
+						</ul>
+					</li>
+					<li>For every edge, store its <code>newPosition</code> as either
+						<ul>
+							<li>the midpoint (boundary edge), or</li>
+							<li>the Loop edge rule \( \frac{3}{8}(A+B) + \frac{1}{8}(C+D) \) (interior).</li>
+						</ul>
+					</li>
+				</ul>
+			</li>
+			<li><b>Pass 2 – topology refinement</b>
+				<ul>
+					<li>Iterate over the original edge list once (captured by <code>num_original_edges</code>).</li>
+					<li>Split each edge; the newly created midpoint vertex inherits the edge’s pre-computed <code>newPosition</code>.</li>
+					<li>Tag elements created by splitting as <code>isNew = true</code> so we can recognise them later.</li>
+				</ul>
+			</li>
+			<li><b>Pass 3 – edge flips for odd/even pattern</b>
+				<ul>
+					<li>Traverse all edges: if an edge is <i>new</i> and its two incident vertices do not share the same “newness”, flip it.</li>
+					<li>This produces the canonical Loop connectivity where every old–new edge becomes the diagonal of the “kite”.</li>
+				</ul>
+			</li>
+			<li><b>Pass 4 – final geometry update</b>
+				<ul>
+					<li>Overwrite the position of every vertex with its buffered <code>newPosition</code>, completing the geometric smoothing.</li>
+				</ul>
+			</li>
+		</ol>
+		<div class="image-grid" style="display:flex; flex-wrap:wrap; justify-content:center; gap:16px;">
+			<figure style="margin:0; text-align:center;">
+				<img src="pic/part6/loop.png" alt="loop" style="width:300px"/>
+				<figcaption>loop</figcaption>
+			</figure>
+			<figure style="margin:0; text-align:center;">
+				<img src="pic/part6/pressL.png" alt="pressL" style="width:300px"/>
+				<figcaption>pressL</figcaption>
+			</figure>
+		</div>
+		<p>When Loop subdivision was applied to the Utah teapot, two distinct failure modes emerged. The first was geometric distortion: after the initial subdivision the surface erupted into spikes and cross-shaped slivers, and although further refinement was possible, the artefacts grew progressively worse. The second was a topological breakdown: no proper 4-to-1 splits appeared and a second subdivision attempt drove the program into an infinite loop or outright crash.</p>
+
 		</div>
 	</body>
 </html>
