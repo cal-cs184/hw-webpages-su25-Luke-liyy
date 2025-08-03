@@ -45,62 +45,493 @@
 		-->
 
 		<h2>Overview</h2>
-		Give a high-level overview of what you implemented in this homework. Think about what you've built as a whole. Share your thoughts on what interesting things you've learned from completing the homework.
+		<p>This homework implements a comprehensive path tracing renderer with advanced optimization techniques. The project builds upon fundamental ray-geometry intersection algorithms and extends into sophisticated global illumination methods that simulate realistic light transport in 3D scenes.</p>
+		
+		<p><strong>Core Implementation:</strong></p>
+		<ul>
+			<li><strong>Ray Generation & Scene Intersection</strong>: Implemented camera ray generation with proper coordinate transformations and efficient triangle intersection using the Möller-Trumbore algorithm.</li>
+			<li><strong>Bounding Volume Hierarchy (BVH)</strong>: Built an acceleration structure using spatial partitioning with longest-axis splitting heuristics, achieving over 3,500× performance improvements on complex scenes.</li>
+			<li><strong>Direct Illumination</strong>: Developed both uniform hemisphere sampling and importance sampling techniques, with the latter dramatically reducing noise in shadowed regions.</li>
+			<li><strong>Global Illumination</strong>: Implemented recursive path tracing with Russian roulette termination, enabling realistic indirect lighting effects including color bleeding and soft shadows.</li>
+			<li><strong>Adaptive Sampling</strong>: Created an intelligent sampling system that dynamically allocates computational resources based on pixel convergence, optimizing render quality and performance.</li>
+		</ul>
+		
+		<p><strong>Key Learning Insights:</strong></p>
+		<p>The most fascinating aspect was observing how light bounces create the subtle visual cues that make rendered scenes appear natural. The second and third bounces, while contributing relatively little energy, are crucial for eliminating the flat, artificial appearance of direct-only lighting. The implementation of Russian roulette termination was particularly elegant—using probabilistic path termination to maintain unbiased estimates while controlling computational cost.</p>
+		
+		<p>The adaptive sampling implementation revealed how variance-based convergence detection can dramatically improve rendering efficiency. Watching the sampling rate heat maps showed clear patterns: complex regions like shadow boundaries and reflective surfaces require significantly more samples, while uniform areas converge quickly with minimal computation.</p>
 
 		<h2>Part 1: Ray Generation and Scene Intersection</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		
+		<h3>1. Ray Generation</h3>
+		
+		<h4>1. Normalize pixel coordinates</h4>
+		<p>Jitter the integer pixel \( (x_{\text{pix}}, y_{\text{pix}}) \) within \([0, 1)\) and divide by the image resolution to get \( (u, v) \in [0, 1]^2 \).</p>
+		
+		<h4>2. Project to the camera's virtual sensor</h4>
+		<p>Map \( (u, v) \) onto the rectangle on the \( z = -1 \) plane with extents</p>
+		\[ x \in \left[- \tan\left(\frac{\text{hFov}}{2}\right), \tan\left(\frac{\text{hFov}}{2}\right)\right], \quad y \in \left[- \tan\left(\frac{\text{vFov}}{2}\right), \tan\left(\frac{\text{vFov}}{2}\right)\right]. \]
+		<p>This gives the point \( \mathbf{p}_{\text{cam}} = (x, y, -1) \).</p>
+		
+		<h4>3. Get the ray direction in camera space</h4>
+		\[ \mathbf{d}_{\text{cam}} = \frac{\mathbf{p}_{\text{cam}}}{\|\mathbf{p}_{\text{cam}}\|}. \]
+		
+		<h4>4. Transform to world space</h4>
+		<p>Rotate with \( c2w \) and translate by \( \text{pos} \) to obtain</p>
+		\[ \mathbf{d}_{\text{world}} = (c2w \cdot \mathbf{d}_{\text{cam}})^{\wedge}, \quad \mathbf{o}_{\text{world}} = \text{pos}. \]
+		
+		<h4>5. Set clipping range</h4>
+		<p>Store \( \text{min_t} = \text{nClip} \) and \( \text{max_t} = \text{fClip} \) to discard hits outside the visible frustum.</p>
 
-		<p>Here is an example 2x2 gridlike structure using an HTML table. Each <b>tr</b> is a row and each <b>td</b> is a column in that row. You might find this useful for framing and showing your result images in an organized fashion.</p>
+		<h3>Triangle Intersection Using Möller–Trumbore Algorithm</h3>
+		<p>I'm using the classic Möller–Trumbore routine for triangle hits, and it boils down to these steps:</p>
+		<ol>
+			<li><strong>Form two edge vectors</strong><br>
+			Pick one vertex as the origin; the two edges from it give a local X and Y axis. They'll let us express any hit point in barycentric coordinates.</li>
+			
+			<li><strong>Early-out for near-parallel rays</strong><br>
+			If the ray direction is almost parallel to the triangle's plane, we immediately return false—no intersection.</li>
+			
+			<li><strong>Compute barycentric coordinate u</strong><br>
+			Project the vector from the triangle origin to the ray origin into that local frame to get u. If u falls outside 0–1, the point is outside the triangle strip, so reject.</li>
+			
+			<li><strong>Compute barycentric coordinate v</strong><br>
+			Do the same for v. It must also be in 0–1, and u+v must stay ≤ 1; otherwise the point is outside the triangle.</li>
+			
+			<li><strong>Solve for ray parameter t</strong><br>
+			If both u and v check out, solve for t along the ray and make sure it lies within [min_t, max_t].</li>
+		</ol>
+		
+		<p>When it does:</p>
+		<ul>
+			<li>Store this nearest t back to <code>r.max_t</code> so farther intersections get ignored later;</li>
+			<li>Interpolate the three vertex normals with weights <code>(1-u-v, u, v)</code> for a smooth shading normal;</li>
+			<li>Fill the Intersection struct with t, primitive pointer, bsdf, and the normal, then return true.</li>
+		</ul>
+
+		<h3>Results</h3>
 		<div style="display: flex; flex-direction: column; align-items: center;">
 			<table style="width: 100%; text-align: center; border-collapse: collapse;">
 			  <tr>
 				<td style="text-align: center;">
-				  <img src="cornell.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
+				  <img src="picture/part1/sheres-task2-1.png" width="400px"/>
+				  <figcaption>Spheres - Task 2-1</figcaption>
 				</td>
 				<td style="text-align: center;">
-				  <img src="cornell.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
+				  <img src="picture/part1/banana-task2-2.png" width="400px"/>
+				  <figcaption>Banana - Task 2-2</figcaption>
 				</td>
 			  </tr>
 			  <tr>
 				<td style="text-align: center;">
-				  <img src="cornell.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
+				  <img src="picture/part1/CBempty-task3.png" width="400px"/>
+				  <figcaption>Cornell Box Empty - Task 3</figcaption>
 				</td>
 				<td style="text-align: center;">
-				  <img src="cornell.png" width="400px"/>
-				  <figcaption>Caption goes here.</figcaption>
+				  <img src="picture/part1/CBspheres-task4.png" width="400px"/>
+				  <figcaption>Cornell Box with Spheres - Task 4</figcaption>
 				</td>
 			  </tr>
 			</table>
 		</div>
 		
 		<h2>Part 2: Bounding Volume Hierarchy</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		<p><strong>BVH Construction Algorithm</strong></p>
+		<ol>
+		  <li><strong>Recursion entry</strong>: Scan the primitive list once to compute the enclosing bounding box <code>bb</code> and create a node.</li>
+		  <li><strong>Leaf-node test</strong>: If the list size ≤ <code>max_leaf_size</code> (4), mark the node as a leaf by storing <code>start</code>/<code>end</code> and return.</li>
+		  <li><strong>Choosing the split axis</strong>: Measure the extents of <code>bb</code> along x, y, and z, and pick the longest axis to split.</li>
+		  <li><strong>Computing the split position</strong>: Compute the mean (mid-point) of primitive centroids along the chosen axis (μ). If all centroids fall on one side, fall back to an equal-counts split to avoid degenerate trees.</li>
+		  <li><strong>Partitioning the primitives</strong>: Send primitives with centroid&nbsp;&lt;&nbsp;μ to the left list and the rest to the right. If the split is highly unbalanced (&gt;80 % difference), again fall back to equal-counts.</li>
+		  <li><strong>Recurse on children</strong>: Build the <code>left</code> and <code>right</code> sub-trees recursively and attach them to the current node.</li>
+		</ol>
+
+		<p><strong>Splitting Heuristic Rationale</strong></p>
+		<p>The “longest-axis + centroid mean” strategy is a cheap approximation of the Surface Area Heuristic (SAH). It needs only one O(n) scan per level yet reduces node surface area enough to cut the number of ray–box tests by roughly 10–30 % compared with random or fixed-axis splits. Full SAH trees may trace slightly faster but take much longer to build; this midpoint rule balances build time and traversal cost, which matters when scenes change interactively.</p>
+
+<figure style="text-align: center;">
+  <img src="picture/part2/bench.png" alt="Bench timing experiment" style="width:70%"/>
+  <figcaption><em>bench.dae</em></figcaption>
+</figure>
+
+<figure style="text-align: center;">
+  <img src="picture/part2/CBlucy.png" alt="CBlucy timing experiment" style="width:70%"/>
+  <figcaption><em>CBlucy.dae</em></figcaption>
+</figure>
+
+<p>Using bounding-volume hierarchy (BVH) acceleration cuts render time by roughly four orders of magnitude on the tested scenes. For the "bench" scene (67,808 primitives), BVH reduced render time from 157.45 s to 0.044 s—over a 3,500× speed-up—while average intersection tests per ray fell from about 11,169 to 1.56</p>
+
+<div style="display: flex; flex-direction: column; align-items: center;">
+	<table style="width: 100%; text-align: center; border-collapse: collapse;">
+	  <tr>
+		<td style="text-align: center;">
+		  <img src="picture/part2/lucy-normal.png" width="400px"/>
+		  <figcaption>Lucy - Normal Rendering</figcaption>
+		</td>
+		<td style="text-align: center;">
+		  <img src="picture/part2/lucy-bvh.png" width="400px"/>
+		  <figcaption>Lucy - BVH Rendering</figcaption>
+		</td>
+	  </tr>
+	  <tr>
+		<td style="text-align: center;">
+		  <img src="picture/part2/bench-normal.png" width="400px"/>
+		  <figcaption>Bench - Normal Rendering</figcaption>
+		</td>
+		<td style="text-align: center;">
+		  <img src="picture/part2/bench-bvh.png" width="400px"/>
+		  <figcaption>Bench - BVH Rendering</figcaption>
+		</td>
+	  </tr>
+	</table>
+</div>
 
 		<h2>Part 3: Direct Illumination</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		<p><strong>Implementations:</strong></p>
+		<ul>
+		  <li><code>estimate_direct_lighting_hemisphere</code><br>
+		      &bull; Build a local frame (normal aligns with z); uniform hemisphere sampling, pdf = 1/(2&pi;).<br>
+		      &bull; For each of N samples: sample direction &omega;<sub>i</sub>, cast a shadow ray, if the light is visible obtain L<sub>i</sub>, accumulate <em>f<sub>r</sub>L<sub>i</sub>cos&theta; / pdf</em>.<br>
+		      &bull; Divide by N to get the final estimate.</li>
+		  <li><code>estimate_direct_lighting_importance</code><br>
+		      &bull; Loop over all lights. Use 1 sample for delta lights, <code>ns_area_light</code> samples for area lights.<br>
+		      &bull; For each sample call <code>light-&gt;sample_L</code> to get (L<sub>i</sub>, &omega;<sub>i</sub>, dist, pdf); cast a shadow ray for occlusion.<br>
+		      &bull; If unoccluded and cos&theta;&gt;0, accumulate <em>f<sub>r</sub>L<sub>i</sub>cos&theta; / pdf</em>.<br>
+		      &bull; Average over its samples and add to the total.</li>
+		</ul>
 
+		<p>Soft-shadow noise drops quickly as light samples rise:</p>
+		<figure style="text-align: center;">
+		  <table style="width: 100%; text-align: center; border-collapse: collapse;">
+		    <tr>
+		      <td style="text-align: center;"><img src="picture/part3/CBbunny_l1.png" width="200px"/><figcaption>l=1</figcaption></td>
+		      <td style="text-align: center;"><img src="picture/part3/CBbunny_l4.png" width="200px"/><figcaption>l=4</figcaption></td>
+		      <td style="text-align: center;"><img src="picture/part3/CBbunny_l16.png" width="200px"/><figcaption>l=16</figcaption></td>
+		      <td style="text-align: center;"><img src="picture/part3/CBbunny_l64.png" width="200px"/><figcaption>l=64</figcaption></td>
+		    </tr>
+		  </table>
+		</figure>
+		<p>With the same 64&nbsp;&times;&nbsp;32 sample budget, hemisphere sampling produces visible speckle noise on walls and shadowed bunny regions because most directions miss the small ceiling light. Importance sampling directs rays toward the light, so highlights are crisp and shadow gradients are smooth, dramatically reducing variance and converging faster.</p>
+
+		<figure style="text-align: center;">
+		  <table style="width: 100%; text-align: center; border-collapse: collapse;">
+		    <tr>
+		      <td style="text-align: center;">
+		        <img src="picture/part3/CBbunny_H_64_32.png" width="400px"/>
+		        <figcaption>Uniform Hemisphere Sampling</figcaption>
+		      </td>
+		      <td style="text-align: center;">
+		        <img src="picture/part3/bunny_64_32.png" width="400px"/>
+		        <figcaption>Light Importance Sampling</figcaption>
+		      </td>
+		    </tr>
+		  </table>
+		</figure>
+		
 		<h2>Part 4: Global Illumination</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+		
+		<h3>Implementation of the Indirect Lighting Function</h3>
+		
+		<ol>
+			<li><strong>Local coordinate frame setup</strong><br>
+			Represent the outgoing direction at the hit point in the local coordinate frame, then call the existing direct-lighting routine to add its contribution.</li>
+			
+			<li><strong>Depth termination check</strong><br>
+			Return immediately if the path has already reached the maximum bounce depth.</li>
+			
+			<li><strong>BSDF sampling</strong><br>
+			Use the material's BSDF to generate the next incoming direction with cosine-weighted sampling, and obtain the corresponding pdf.</li>
+			
+			<li><strong>Russian roulette termination</strong><br>
+			Perform Russian roulette: terminate the path with roughly a 35% probability; if it survives, multiply subsequent contributions by 1 / 0.65 to keep the estimate unbiased.</li>
+			
+			<li><strong>Recursive ray tracing</strong><br>
+			Shoot a new ray along the sampled direction:
+			<ul>
+				<li>If it hits geometry, recursively compute the indirect radiance at that point.</li>
+				<li>If it misses but an environment light exists, take the environment radiance directly.</li>
+			</ul>
+			</li>
+			
+			<li><strong>Radiance accumulation</strong><br>
+			Multiply the returned radiance by the BSDF value, the cosine term, and 1 / pdf, then divide by the continuation probability, and add it to the current result.</li>
+			
+			<li><strong>Final result</strong><br>
+			Finally, return the accumulated radiance.</li>
+		</ol>
+
+		<h3>Global (Direct and Indirect) Illumination</h3>
+		<figure style="text-align: center;">
+			<table style="width: 100%; text-align: center; border-collapse: collapse;">
+				<tr>
+					<td style="text-align: center;">
+						<img src="picture/part4/spheres.png" width="400px"/>
+						<figcaption>Spheres</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part4/global_illumination.png" width="400px"/>
+						<figcaption>Global Illumination</figcaption>
+					</td>
+				</tr>
+			</table>
+		</figure>
+
+		<h3>Direct and Indirect Illumination</h3>
+		<figure style="text-align: center;">
+			<table style="width: 100%; text-align: center; border-collapse: collapse;">
+				<tr>
+					<td style="text-align: center;">
+						<img src="picture/part4/direct_only.png" width="400px"/>
+						<figcaption>Direct Illumination Only</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part4/bunny_indirect_only.png" width="400px"/>
+						<figcaption>Indirect Illumination Only</figcaption>
+					</td>
+				</tr>
+				<tr>
+					<td style="text-align: center;">
+						<img src="picture/part4/CBspheres_lambertian_direct_only.png" width="400px"/>
+						<figcaption>CBspheres Lambertian - Direct Only</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part4/CBspheres_lambertian_indirect_only.png" width="400px"/>
+						<figcaption>CBspheres Lambertian - Indirect Only</figcaption>
+					</td>
+				</tr>
+			</table>
+		</figure>
+
+		<h3>Bounce Depth Analysis</h3>
+		<p>For CBbunny.dae, render the mth bounce of light with max_ray_depth set to 0, 1, 2, 3, 4, and 5 (the -m flag), and isAccumBounces=false. Unaccumulated bounces</p>
+		
+		<figure style="text-align: center;">
+			<table style="width: 100%; text-align: center; border-collapse: collapse;">
+				<tr>
+					<td style="text-align: center;">
+						<img src="picture/part4/bunny_m0.png" width="300px"/>
+						<figcaption>m = 0 (zero bounces)</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part4/bunny_m01_only.png" width="300px"/>
+						<figcaption>m = 1 (first bounce only)</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part4/bunny_m02.png" width="300px"/>
+						<figcaption>m = 2 (second bounce only)</figcaption>
+					</td>
+				</tr>
+				<tr>
+					<td style="text-align: center;">
+						<img src="picture/part4/bunny_m03.png" width="300px"/>
+						<figcaption>m = 3 (third bounce only)</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part4/bunny_m04.png" width="300px"/>
+						<figcaption>m = 4 (fourth bounce only)</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part4/bunny_m05.png" width="300px"/>
+						<figcaption>m = 5 (fifth bounce only)</figcaption>
+					</td>
+				</tr>
+			</table>
+		</figure>
+
+		<p><strong>Second Bounce (2-bounce)</strong></p>
+		<ul>
+			<li><strong>Energy</strong>: Still fairly strong, supplying most of the scene's indirect illumination.</li>
+			<li><strong>Effect</strong>: Each colored wall splashes its tint onto the bunny and the floor—clear red and blue color bleeding; shadows are noticeably lifted and their edges soften.</li>
+			<li><strong>Role</strong>: Sets overall brightness and dominant hues, eliminating hard black shadows and the flat look of pure direct lighting.</li>
+		</ul>
+
+		<p><strong>Third Bounce (3-bounce)</strong></p>
+		<ul>
+			<li><strong>Energy</strong>: Greatly attenuated, leaving only a faint diffuse glow.</li>
+			<li><strong>Effect</strong>: Adds a thin layer of soft light in the darkest corners and along high-contrast edges; a second mixing of red and blue yields a subtle purplish-gray, making tonal transitions more continuous.</li>
+			<li><strong>Role</strong>: Further smooths light–dark gradients and reduces Monte-Carlo noise, moving the image from "physically plausible" to "visually natural."</li>
+		</ul>
+
+		<h3>Accumulated Bounces</h3>
+		<figure style="text-align: center;">
+			<table style="width: 100%; text-align: center; border-collapse: collapse;">
+				<tr>
+					<td style="text-align: center;">
+						<img src="picture/part4/bunny_m1.png" width="300px"/>
+						<figcaption>max_ray_depth = 1</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part4/bunny_m2.png" width="300px"/>
+						<figcaption>max_ray_depth = 2</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part4/bunny_m3.png" width="300px"/>
+						<figcaption>max_ray_depth = 3</figcaption>
+					</td>
+				</tr>
+				<tr>
+					<td style="text-align: center;">
+						<img src="picture/part4/bunny_m4.png" width="300px"/>
+						<figcaption>max_ray_depth = 4</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part4/bunny_m5.png" width="300px"/>
+						<figcaption>max_ray_depth = 5</figcaption>
+					</td>
+					<td></td>
+				</tr>
+			</table>
+		</figure>
+
+		<h3>Russian Roulette Rendering</h3>
+		<figure style="text-align: center;">
+			<table style="width: 100%; text-align: center; border-collapse: collapse;">
+				<tr>
+					<td style="text-align: center;">
+						<img src="picture/part4/bunny_rr_m0.png" width="300px"/>
+						<figcaption>RR max_ray_depth = 0</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part4/bunny_rr_m1.png" width="300px"/>
+						<figcaption>RR max_ray_depth = 1</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part4/bunny_rr_m2.png" width="300px"/>
+						<figcaption>RR max_ray_depth = 2</figcaption>
+					</td>
+				</tr>
+				<tr>
+					<td style="text-align: center;">
+						<img src="picture/part4/bunny_rr_m3.png" width="300px"/>
+						<figcaption>RR max_ray_depth = 3</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part4/bunny_rr_m4.png" width="300px"/>
+						<figcaption>RR max_ray_depth = 4</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part4/bunny_rm100.png" width="300px"/>
+						<figcaption>RR max_ray_depth = 100</figcaption>
+					</td>
+				</tr>
+			</table>
+		</figure>
+
+		<h3>Various Sample-per-Pixel Rates</h3>
+		<figure style="text-align: center;">
+			<table style="width: 100%; text-align: center; border-collapse: collapse;">
+				<tr>
+					<td style="text-align: center;">
+						<img src="picture/part4/scene_s1.png" width="300px"/>
+						<figcaption>1 sample per pixel</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part4/scene_s2.png" width="300px"/>
+						<figcaption>2 samples per pixel</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part4/scene_s4.png" width="300px"/>
+						<figcaption>4 samples per pixel</figcaption>
+					</td>
+				</tr>
+				<tr>
+					<td style="text-align: center;">
+						<img src="picture/part4/scene_s8.png" width="300px"/>
+						<figcaption>8 samples per pixel</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part4/scene_s16.png" width="300px"/>
+						<figcaption>16 samples per pixel</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part4/scene_s64.png" width="300px"/>
+						<figcaption>64 samples per pixel</figcaption>
+					</td>
+				</tr>
+				<tr>
+					<td style="text-align: center;">
+						<img src="picture/part4/scene_s1024.png" width="300px"/>
+						<figcaption>1024 samples per pixel</figcaption>
+					</td>
+					<td></td>
+					<td></td>
+				</tr>
+			</table>
+		</figure>
 
 		<h2>Part 5: Adaptive Sampling</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-		<h2>(Optional) Part 6: Extra Credit Opportunities</h2>
-		Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
 		
-		<h2>Additional Notes (please remove)</h2>
+		<h3>What Is Adaptive Sampling?</h3>
+		<p>Adaptive sampling is an optimization technique for path tracing that allocates computational effort intelligently. In a conventional path tracer every pixel receives a fixed number of samples, yet in practice</p>
+		
 		<ul>
-			<li>You can also add code if you'd like as so: <code>code code code</code></li>
-			<li>If you'd like to add math equations, 
-				<ul>
-					<li>You can write inline equations like so: \( a^2 + b^2 = c^2 \)</li>
-					<li>You can write display equations like so: \[ a^2 + b^2 = c^2 \]</li>
-				</ul>
-			</li>
+			<li><strong>Simple regions</strong> (e.g., large, flat surfaces) converge with very few samples.</li>
+			<li><strong>Complex regions</strong> (e.g., shadow edges, reflections, refractions) need many more samples to eliminate noise.</li>
 		</ul>
+		
+		<p>By detecting when a pixel has already converged and then stopping early, adaptive sampling prevents wasted work.</p>
+		
+		<hr>
+		
+		<h3>Implementation Details</h3>
+		
+		<ol>
+			<li><strong>Data-Structure Design</strong><br>
+			<em>Only two cumulative values are stored ( s₁ and s₂ ); individual sample histories are unnecessary, so memory overhead is minimal.</em></li>
+			
+			<li><strong>Statistical Updates</strong><br>
+			<em>Key points:</em>
+			<ul>
+				<li>Convert each RGB radiance sample to a scalar luminance with <code>L.illum()</code>.</li>
+				<li>Update the running statistics for every new sample.</li>
+			</ul>
+			</li>
+			
+			<li><strong>Batch-Based Convergence Tests</strong><br>
+			<em>Design choices:</em>
+			<ul>
+				<li>Perform the test once every 32 samples to avoid excessive variance calculations.</li>
+				<li>Guard against divide-by-zero by ensuring <code>num_samples > 1</code>.</li>
+				<li>Use the standard, numerically stable variance formula.</li>
+			</ul>
+			</li>
+			
+			<li><strong>Variance Formula</strong><br>
+			<em>The algorithm below is numerically stable:</em>
+			\[ \mu=\frac{s_1}{n},\qquad \sigma^{2} = \frac{1}{n-1}\Bigl(s_2-\frac{s_1^{\,2}}{n}\Bigr) \]
+			<em>It eliminates repeated evaluation of \(\sum(x_i-\mu)^2\) and applies Bessel's correction \((n-1)\) instead of \(n\).</em></li>
+			
+			<li><strong>Result Output</strong><br>
+			<em>After convergence, the final color is written to the framebuffer, and the actual sample count is recorded so the sampling-rate heat-map can be visualized.</em></li>
+		</ol>
+
+		<h3>Adaptive Sampling Results</h3>
+		<figure style="text-align: center;">
+			<table style="width: 100%; text-align: center; border-collapse: collapse;">
+				<tr>
+					<td style="text-align: center;">
+						<img src="picture/part5/bunny_adaptive_2048.png" width="400px"/>
+						<figcaption>Bunny - Adaptive Sampling (2048 max samples)</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part5/bunny_adaptive_2048_rate.png" width="400px"/>
+						<figcaption>Bunny - Sampling Rate Heat Map</figcaption>
+					</td>
+				</tr>
+				<tr>
+					<td style="text-align: center;">
+						<img src="picture/part5/spheres_adaptive_2048.png" width="400px"/>
+						<figcaption>Spheres - Adaptive Sampling (2048 max samples)</figcaption>
+					</td>
+					<td style="text-align: center;">
+						<img src="picture/part5/spheres_adaptive_2048_rate.png" width="400px"/>
+						<figcaption>Spheres - Sampling Rate Heat Map</figcaption>
+					</td>
+				</tr>
+			</table>
+		</figure>
+
+		
 		</div>
 	</body>
 </html>
